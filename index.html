@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KetoPlanner Simple</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .nav-btn.active { color: #15803d; border-top: 3px solid #15803d; background-color: #f0fdf4; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-24 text-slate-900">
+
+    <!-- NAGŁÓWEK -->
+    <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-sm">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl">🥑</span>
+            <h1 class="text-lg font-black text-green-700 uppercase tracking-tighter">KetoPlan</h1>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <div id="searchBox" class="hidden">
+                <input type="text" id="searchInput" placeholder="Szukaj..." class="bg-slate-100 rounded-xl px-3 py-1.5 text-sm border-none focus:ring-2 focus:ring-green-500 outline-none w-32">
+            </div>
+            <button onclick="toggleMenu()" class="p-2 bg-slate-100 rounded-xl text-slate-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </div>
+
+        <div id="menu" class="hidden absolute right-4 top-14 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden">
+            <button onclick="exportJSON()" class="w-full text-left px-4 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 border-b border-slate-50 flex justify-between">📦 Eksportuj kopię <span>💾</span></button>
+            <label class="w-full text-left px-4 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer flex justify-between border-b border-slate-50">
+                Importuj dane <span>📂</span>
+                <input type="file" class="hidden" onchange="importJSON(event)">
+            </label>
+            <button onclick="clearAllData()" class="w-full text-left px-4 py-4 text-sm font-semibold text-rose-600 hover:bg-rose-50 flex justify-between">Wyczyść wszystko <span>⚠️</span></button>
+        </div>
+    </header>
+
+    <!-- WIDOK 1: NOWY PRZEPIS -->
+    <main id="viewAdd" class="view active max-w-lg mx-auto px-4 pt-6">
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+            <h2 id="formTitle" class="text-xl font-extrabold mb-6 text-slate-800">Nowy Przepis</h2>
+            <form id="recipeForm" class="space-y-4">
+                <input type="hidden" id="editId">
+                <input type="text" id="title" placeholder="Nazwa potrawy" required class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-green-500 font-medium">
+                
+                <div class="flex gap-2 pb-2" id="catSelector">
+                    <button type="button" onclick="setCat('Śniadanie')" class="cat-opt flex-1 px-4 py-3 rounded-xl bg-slate-100 text-xs font-bold transition-all">🍳 Śniadanie</button>
+                    <button type="button" onclick="setCat('Obiad')" class="cat-opt flex-1 px-4 py-3 rounded-xl bg-slate-100 text-xs font-bold transition-all">🍖 Obiad</button>
+                    <button type="button" onclick="setCat('Kolacja')" class="cat-opt flex-1 px-4 py-3 rounded-xl bg-slate-100 text-xs font-bold transition-all">🥗 Kolacja</button>
+                </div>
+                <input type="hidden" id="category" value="Śniadanie">
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                        <label class="block text-[10px] font-bold text-blue-500 uppercase">Białko (g)</label>
+                        <input type="number" id="protein" step="0.1" placeholder="0" required class="w-full bg-transparent text-center font-bold text-lg outline-none">
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                        <label class="block text-[10px] font-bold text-orange-500 uppercase">Tłuszcz (g)</label>
+                        <input type="number" id="fat" step="0.1" placeholder="0" required class="w-full bg-transparent text-center font-bold text-lg outline-none">
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                        <label class="block text-[10px] font-bold text-rose-500 uppercase">Węgle (g)</label>
+                        <input type="number" id="carbs" step="0.1" placeholder="0" required class="w-full bg-transparent text-center font-bold text-lg outline-none">
+                    </div>
+                </div>
+
+                <textarea id="ingredients" rows="2" placeholder="Składniki (opcjonalnie)..." class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm"></textarea>
+                
+                <div class="flex gap-2">
+                    <button type="submit" id="submitBtn" class="flex-1 bg-green-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-100 hover:bg-green-700 transition-all uppercase tracking-wider text-sm">Zapisz przepis</button>
+                    <button type="button" id="cancelEdit" onclick="resetForm()" class="hidden px-6 bg-slate-100 text-slate-500 font-bold rounded-2xl uppercase text-[10px]">Anuluj</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- WIDOK 2: BAZA PRZEPISÓW -->
+    <main id="viewList" class="view max-w-2xl mx-auto px-4 pt-6">
+        <div id="recipeContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Przepisy -->
+        </div>
+    </main>
+
+    <!-- WIDOK 3: JADŁOSPIS -->
+    <main id="viewDay" class="view max-w-2xl mx-auto px-4 pt-6">
+        <!-- PODSUMOWANIE -->
+        <div class="bg-slate-900 rounded-3xl p-6 text-white mb-6 shadow-xl relative overflow-hidden">
+            <div class="relative z-10">
+                <p class="text-xs font-bold text-green-400 uppercase tracking-widest mb-1">Podsumowanie dzisiejsze</p>
+                <div class="flex items-baseline gap-1">
+                    <span id="dayKcal" class="text-4xl font-black text-white">0</span>
+                    <span class="text-sm font-bold text-slate-400">kcal</span>
+                </div>
+                <div class="grid grid-cols-3 gap-4 mt-6">
+                    <div><p class="text-[10px] uppercase font-bold text-blue-400">Białko</p><p id="dayP" class="text-lg font-bold">0g</p></div>
+                    <div><p class="text-[10px] uppercase font-bold text-orange-400">Tłuszcz</p><p id="dayF" class="text-lg font-bold">0g</p></div>
+                    <div><p class="text-[10px] uppercase font-bold text-rose-400">Węgle</p><p id="dayW" class="text-lg font-bold">0g</p></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center mb-4 px-2">
+            <h3 class="font-black text-slate-800 uppercase text-xs tracking-widest">Dzisiejsze menu</h3>
+            <button onclick="clearDay()" class="text-rose-500 font-bold text-[10px] uppercase bg-rose-50 px-3 py-1.5 rounded-lg">Wyczyść listę</button>
+        </div>
+
+        <div id="dayContainer" class="space-y-3">
+            <!-- Wybrane posiłki -->
+        </div>
+    </main>
+
+    <!-- NAWIGACJA DOLNA -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 flex justify-around items-center shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-40">
+        <button onclick="showView('Add')" id="navAdd" class="nav-btn active flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            <span class="text-[9px] font-black uppercase tracking-tighter">Dodaj</span>
+        </button>
+        <button onclick="showView('List')" id="navList" class="nav-btn flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            <span class="text-[9px] font-black uppercase tracking-tighter">Baza</span>
+        </button>
+        <button onclick="showView('Day')" id="navDay" class="nav-btn flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all relative">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            <span class="text-[9px] font-black uppercase tracking-tighter">Dzisiaj</span>
+            <span id="badge" class="absolute top-1 right-4 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full hidden"></span>
+        </button>
+    </nav>
+
+    <script>
+        let recipes = JSON.parse(localStorage.getItem('keto_recipes')) || [];
+        let dayPlan = JSON.parse(localStorage.getItem('keto_day')) || [];
+
+        const CATEGORY_STYLES = {
+            'Śniadanie': 'bg-orange-50 text-orange-600 border-orange-100',
+            'Obiad': 'bg-purple-50 text-purple-600 border-purple-100',
+            'Kolacja': 'bg-blue-50 text-blue-600 border-blue-100'
+        };
+
+        function showView(viewName) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('searchBox').classList.toggle('hidden', viewName !== 'List');
+            document.getElementById('view' + viewName).classList.add('active');
+            document.getElementById('nav' + viewName).classList.add('active');
+            if(viewName === 'List') renderRecipes();
+            if(viewName === 'Day') renderDay();
+            window.scrollTo(0,0);
+        }
+
+        function toggleMenu() { document.getElementById('menu').classList.toggle('hidden'); }
+
+        function setCat(cat) {
+            document.getElementById('category').value = cat;
+            document.querySelectorAll('.cat-opt').forEach(btn => {
+                const isSelected = btn.innerText.includes(cat);
+                btn.classList.toggle('bg-green-600', isSelected);
+                btn.classList.toggle('text-white', isSelected);
+                btn.classList.toggle('bg-slate-100', !isSelected);
+                btn.classList.toggle('text-slate-600', !isSelected);
+            });
+        }
+
+        const form = document.getElementById('recipeForm');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const recipeData = {
+                id: id || Date.now().toString(),
+                title: document.getElementById('title').value,
+                category: document.getElementById('category').value,
+                p: parseFloat(document.getElementById('protein').value),
+                f: parseFloat(document.getElementById('fat').value),
+                c: parseFloat(document.getElementById('carbs').value),
+                ing: document.getElementById('ingredients').value
+            };
+            if(id) {
+                const idx = recipes.findIndex(r => r.id === id);
+                recipes[idx] = recipeData;
+            } else {
+                recipes.push(recipeData);
+            }
+            saveAndSync();
+            resetForm();
+            showView('List');
+        });
+
+        function resetForm() {
+            form.reset();
+            setCat('Śniadanie');
+            document.getElementById('editId').value = '';
+            document.getElementById('formTitle').innerText = 'Nowy Przepis';
+            document.getElementById('submitBtn').innerText = 'Zapisz przepis';
+            document.getElementById('cancelEdit').classList.add('hidden');
+        }
+
+        function editRecipe(id) {
+            const r = recipes.find(r => r.id === id);
+            document.getElementById('editId').value = r.id;
+            document.getElementById('title').value = r.title;
+            setCat(r.category);
+            document.getElementById('protein').value = r.p;
+            document.getElementById('fat').value = r.f;
+            document.getElementById('carbs').value = r.c;
+            document.getElementById('ingredients').value = r.ing;
+            document.getElementById('formTitle').innerText = 'Edytuj Przepis';
+            document.getElementById('submitBtn').innerText = 'Zaktualizuj';
+            document.getElementById('cancelEdit').classList.remove('hidden');
+            showView('Add');
+        }
+
+        function renderRecipes() {
+            const container = document.getElementById('recipeContainer');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            container.innerHTML = '';
+            const filtered = recipes.filter(r => r.title.toLowerCase().includes(search));
+            filtered.forEach(r => {
+                const kcal = (r.p*4 + r.f*9 + r.c*4).toFixed(0);
+                const style = CATEGORY_STYLES[r.category] || 'bg-slate-50';
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-[9px] font-black uppercase px-2 py-1 rounded border ${style}">${r.category}</span>
+                            <button onclick="addToDay('${r.id}')" class="w-10 h-10 bg-green-600 text-white rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            </button>
+                        </div>
+                        <h3 class="text-md font-bold text-slate-800 mb-4 leading-tight">${r.title}</h3>
+                        <div class="grid grid-cols-4 gap-1 mb-4">
+                            <div class="bg-slate-50 rounded-lg py-1 text-center"><p class="text-[7px] font-bold text-slate-400">B</p><p class="text-xs font-black">${r.p}g</p></div>
+                            <div class="bg-slate-50 rounded-lg py-1 text-center"><p class="text-[7px] font-bold text-slate-400">T</p><p class="text-xs font-black">${r.f}g</p></div>
+                            <div class="bg-slate-50 rounded-lg py-1 text-center"><p class="text-[7px] font-bold text-slate-400">W</p><p class="text-xs font-black">${r.c}g</p></div>
+                            <div class="bg-green-50 rounded-lg py-1 text-center"><p class="text-[7px] font-bold text-green-600">KCAL</p><p class="text-xs font-black text-green-700">${kcal}</p></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between border-t border-slate-50 pt-3">
+                        <button onclick="editRecipe('${r.id}')" class="text-[10px] font-bold text-blue-500 uppercase">Edytuj</button>
+                        <button onclick="deleteRecipe('${r.id}')" class="text-[10px] font-bold text-rose-300 uppercase">Usuń</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderDay() {
+            const container = document.getElementById('dayContainer');
+            container.innerHTML = '';
+            let totals = { p:0, f:0, c:0, kcal:0 };
+            dayPlan.forEach((r, idx) => {
+                const kcal = (r.p*4 + r.f*9 + r.c*4);
+                totals.p += r.p; totals.f += r.f; totals.c += r.c; totals.kcal += kcal;
+                const style = CATEGORY_STYLES[r.category] || 'bg-slate-50';
+                const item = document.createElement('div');
+                item.className = 'bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-sm';
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-1.5 h-10 rounded-full ${style.split(' ')[0]}"></div>
+                        <div>
+                            <p class="text-sm font-bold text-slate-800">${r.title}</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">${kcal.toFixed(0)} kcal • ${r.category}</p>
+                        </div>
+                    </div>
+                    <button onclick="removeFromDay(${idx})" class="text-rose-300 hover:text-rose-500 p-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+            document.getElementById('dayKcal').innerText = totals.kcal.toFixed(0);
+            document.getElementById('dayP').innerText = totals.p.toFixed(1) + 'g';
+            document.getElementById('dayF').innerText = totals.f.toFixed(1) + 'g';
+            document.getElementById('dayW').innerText = totals.c.toFixed(1) + 'g';
+            updateBadge();
+        }
+
+        function updateBadge() {
+            const badge = document.getElementById('badge');
+            badge.innerText = dayPlan.length;
+            badge.classList.toggle('hidden', dayPlan.length === 0);
+        }
+
+        function addToDay(id) {
+            const r = recipes.find(r => r.id === id);
+            dayPlan.push({...r});
+            saveAndSync();
+            alert(`Dodano: ${r.title}`);
+        }
+
+        function removeFromDay(idx) {
+            dayPlan.splice(idx, 1);
+            saveAndSync();
+            renderDay();
+        }
+
+        function clearDay() {
+            if(confirm('Wyczyścić dzisiejszą listę?')) {
+                dayPlan = [];
+                saveAndSync();
+                renderDay();
+            }
+        }
+
+        function clearAllData() {
+            if(confirm('Usunąć wszystko?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        function saveAndSync() {
+            localStorage.setItem('keto_recipes', JSON.stringify(recipes));
+            localStorage.setItem('keto_day', JSON.stringify(dayPlan));
+            updateBadge();
+        }
+
+        function deleteRecipe(id) {
+            if(confirm('Usunąć z bazy?')) {
+                recipes = recipes.filter(r => r.id !== id);
+                saveAndSync();
+                renderRecipes();
+            }
+        }
+
+        function exportJSON() {
+            const blob = new Blob([JSON.stringify({recipes, dayPlan})], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `keto-backup.json`;
+            a.click();
+        }
+
+        function importJSON(e) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const imported = JSON.parse(event.target.result);
+                    recipes = imported.recipes || [];
+                    dayPlan = imported.dayPlan || [];
+                    saveAndSync();
+                    location.reload();
+                } catch(err) { alert('Błąd pliku!'); }
+            };
+            reader.readAsText(e.target.files[0]);
+        }
+
+        document.getElementById('searchInput').addEventListener('input', renderRecipes);
+        setCat('Śniadanie');
+        updateBadge();
+    </script>
+</body>
+</html>
